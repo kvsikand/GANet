@@ -96,6 +96,8 @@ class SyncBatchNorm(_BatchNorm):
         # Resize the input to (B, C, -1).
         input_shape = x.size()
         x = x.view(input_shape[0], self.num_features, -1)
+        print(self.devices, x.get_device())
+        print(x)
         if x.get_device() == self.devices[0]:
             # Master mode
             extra = {

@@ -1,10 +1,10 @@
-CUDA_VISIBLE_DEVICES=0 python evaluation.py --crop_height=384 \
-                  --crop_width=1248 \
+CUDA_VISIBLE_DEVICES=0 python evaluation.py --crop_height=192 \
+                  --crop_width=624 \
                   --max_disp=192 \
-                  --data_path='/ssd1/zhangfeihu/data/kitti2015/training/' \
-                  --test_list='lists/kitti2015_train.list' \
+                  --data_path='/home/kavan/UTAustinFall2019/CS395T/Final/data_scene_flow/testing/' \
+                  --test_list='lists/single_test.list' \
                   --save_path='./result/' \
-                  --resume='./checkpoint/kitti2015_final.pth' \
+                  --resume='./trained_models/kitti2015_final.pth' \
                   --threshold=3.0 \
                   --kitti2015=1
 # 2>&1 |tee logs/log_evaluation.txt

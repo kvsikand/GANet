@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+from torch.nn import BatchNorm2d, BatchNorm3d
 from libs.GANet.modules.GANet import DisparityRegression, GetCostVolume
 from libs.GANet.modules.GANet import MyNormalize
 from libs.GANet.modules.GANet import SGA
 from libs.GANet.modules.GANet import LGA, LGA2, LGA3
-from libs.sync_bn.modules.sync_bn import BatchNorm2d, BatchNorm3d
+# from libs.sync_bn.modules.sync_bn import BatchNorm2d, BatchNorm3d
 
 import torch.nn.functional as F
 from torch.autograd import Variable

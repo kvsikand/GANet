@@ -104,9 +104,18 @@ def load_data(leftname, rightname):
     temp_data[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-    r = right[:, :, 0]
-    g = right[:, :, 1]
-    b = right[:, :, 2]	
+    
+
+    SHIFT = 30
+    r = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 0]], axis=0)
+    g = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 1]], axis=0)
+    b = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 2]], axis=0)
+
+    #gaussian noise
+    r = r + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+    g = g + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+    b = b + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+
     #r,g,b,_ = right.split()
     temp_data[3, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[4, :, :] = (g - np.mean(g[:])) / np.std(g[:])
@@ -135,7 +144,13 @@ def test(leftname, rightname, savename):
         temp = temp[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
     else:
         temp = temp[0, :, :]
-    skimage.io.imsave(savename, (temp * 256).astype('uint16'))
+
+    max_depth = np.max(temp)
+    min_depth = np.min(temp)
+
+    temp = (temp - min_depth) / (max_depth - min_depth)
+
+    skimage.io.imsave(savename, (temp * 256).astype('uint8'))
 
    
 if __name__ == "__main__":
