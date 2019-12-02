@@ -33,6 +33,7 @@ parser.add_argument('--data_path', type=str, required=True, help="data root")
 parser.add_argument('--test_list', type=str, required=True, help="training list")
 parser.add_argument('--save_path', type=str, default='./result/', help="location to save result")
 parser.add_argument('--model', type=str, default='GANet_deep', help="model to train")
+parser.add_argument('--noise', type=str, default='none', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
 
 opt = parser.parse_args()
 
@@ -71,6 +72,35 @@ if opt.resume:
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
+def add_noise(img, height, width):
+    if opt.noise == 'gaussian':
+        #gaussian noise
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
+        r = r + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+        g = g + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+        b = b + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+    elif opt.noise == 'homography':
+        print("Adding Homography Noise...")
+        noise_matrix = np.eye(3, 3) + np.random.normal(0, 1, (3, 3))
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                noisy[i][j] = noise_matrix.dot(img[i, j, :])
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+    elif opt.noise == 'shift':
+        SHIFT = 30
+        r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)
+        g = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 1]], axis=0)
+        b = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 2]], axis=0)
+    elif opt.noise == 'rt':
+        # TODO
+        print("still need to implement")
+
+    return r, g, b
 
 def test_transform(temp_data, crop_height, crop_width):
     _, h, w=np.shape(temp_data)
@@ -105,17 +135,7 @@ def load_data(leftname, rightname):
     temp_data[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
     
-
-    SHIFT = 30
-    r = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 0]], axis=0)
-    g = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 1]], axis=0)
-    b = np.concatenate([np.zeros((SHIFT,right.shape[1])), right[SHIFT:, :, 2]], axis=0)
-
-    #gaussian noise
-    r = r + np.reshape(np.random.normal(0, 25, height * width), (height, width))
-    g = g + np.reshape(np.random.normal(0, 25, height * width), (height, width))
-    b = b + np.reshape(np.random.normal(0, 25, height * width), (height, width))
-
+    r, g, b = add_noise(right, height, width)
     #r,g,b,_ = right.split()
     temp_data[3, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[4, :, :] = (g - np.mean(g[:])) / np.std(g[:])
