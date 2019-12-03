@@ -16,6 +16,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+import cv2
 #from models.GANet_deep import GANet
 from dataloader.data import get_test_set
 import numpy as np
@@ -31,7 +32,7 @@ parser.add_argument('--kitti', type=int, default=0, help='kitti dataset? Default
 parser.add_argument('--kitti2015', type=int, default=0, help='kitti 2015? Default=False')
 parser.add_argument('--data_path', type=str, required=True, help="data root")
 parser.add_argument('--test_list', type=str, required=True, help="training list")
-parser.add_argument('--save_path', type=str, default='./result/', help="location to save result")
+parser.add_argument('--save_path', type=str, help="location to save result")
 parser.add_argument('--model', type=str, default='GANet_deep', help="model to train")
 parser.add_argument('--noise', type=str, default='none', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
 
@@ -88,17 +89,39 @@ def add_noise(img, height, width):
         # If 3x3, is there a cleaner way to apply to each pixel?
 
         noise_matrix = np.eye(3, 3)
-        noise_matrix[0][0] = -1
+        noise_matrix = noise_matrix + np.random.normal(0, 0.01, noise_matrix.shape)
+        corner_noise = np.random.normal(0, 10, (4, 2)).astype(np.float32)
+        persp_matrix = cv2.getPerspectiveTransform(
+            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32),
+            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32) + corner_noise,
+        )
+        persp_matrix = np.around(persp_matrix, 3)   
+        # noise_matrix[2][:2] = [0, 0]
+        # noise_matrix[0][2] = 0
+        # noise_matrix[1][2] = 0
+
+        # noise_matrix[1:,1:] = [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+        # noise_matrix = np.asarray([[0, 0, 0], [0, 1, 0], [0, 0, 1]]) 
+        # noise_matrix[0, 2] = translation[0]
+        # noise_matrix[1, 2] = translation[1]
+        print("NOISE", noise_matrix)
+        print("PERSP", persp_matrix)
+
         noisy = np.zeros(img.shape)
         for i in range(img.shape[0]):
             for j in range(img.shape[1]):
-                new_coord = noise_matrix * np.array([i, j, 0])
-                noisy[new_coord[0]][new_coord[1]] = img[i][j]
-                # noisy[i][j] = noise_matrix.dot(img[i, j, :])
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
 
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
+
+        skimage.io.imsave("test_rotate.png", (noisy).astype('uint8'))
 
     elif opt.noise == 'shift':
         SHIFT = 30
@@ -196,6 +219,9 @@ if __name__ == "__main__":
             leftname = file_path + 'colored_0/' + current_file[0: len(current_file) - 1]
             rightname = file_path + 'colored_1/' + current_file[0: len(current_file) - 1]
 
+        if not opt.save_path:
+            opt.save_path = './result_' + opt.noise + '/'
+            
         savename = opt.save_path + current_file[0: len(current_file) - 1]
         test(leftname, rightname, savename)
 
