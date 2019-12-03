@@ -86,14 +86,20 @@ def add_noise(img, height, width):
         # TODO: Figure out if this is correct way of applying homography
         # Should it be 3x3 or heightxwidth?
         # If 3x3, is there a cleaner way to apply to each pixel?
-        noise_matrix = np.eye(3, 3) + np.random.normal(0, 1, (3, 3))
+
+        noise_matrix = np.eye(3, 3)
+        noise_matrix[0][0] = -1
         noisy = np.zeros(img.shape)
         for i in range(img.shape[0]):
             for j in range(img.shape[1]):
-                noisy[i][j] = noise_matrix.dot(img[i, j, :])
+                new_coord = noise_matrix * np.array([i, j, 0])
+                noisy[new_coord[0]][new_coord[1]] = img[i][j]
+                # noisy[i][j] = noise_matrix.dot(img[i, j, :])
+
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
+
     elif opt.noise == 'shift':
         SHIFT = 30
         r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)

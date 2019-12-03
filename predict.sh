@@ -1,5 +1,5 @@
 
-python predict.py --crop_height=192 \
+python3 predict.py --crop_height=192 \
                   --crop_width=624 \
                   --max_disp=192 \
                   --data_path='../data_scene_flow/testing/' \
