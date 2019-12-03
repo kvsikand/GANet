@@ -90,7 +90,10 @@ def add_noise(img, height, width):
 
         noise_matrix = np.eye(3, 3)
         noise_matrix = noise_matrix + np.random.normal(0, 0.01, noise_matrix.shape)
-        corner_noise = np.random.normal(0, 10, (4, 2)).astype(np.float32)
+        NOISE_AMT = 4
+        corner_noise = np.random.normal(0, NOISE_AMT * .5, (4, 2)).astype(np.float32)
+        corner_noise = np.clip(corner_noise, -NOISE_AMT, NOISE_AMT)
+        # corner_noise = np.array([[30, 60], [-50, 50], [-100, -50], [50, -50]], np.float32)
         persp_matrix = cv2.getPerspectiveTransform(
             np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32),
             np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32) + corner_noise,
@@ -110,7 +113,7 @@ def add_noise(img, height, width):
         noisy = np.zeros(img.shape)
         for i in range(img.shape[0]):
             for j in range(img.shape[1]):
-                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = persp_matrix.dot(np.array([i, j, 1]))
                 if new_coord[0] < 0 or new_coord[1] < 0:
                     continue
                 if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
