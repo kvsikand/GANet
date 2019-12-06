@@ -100,7 +100,8 @@ def add_noise(img, height, width, rmeans, rstdevs):
     elif opt.noise == 'homography':
         print("Adding Homography Noise...")
         noise_matrix = np.eye(3, 3)
-        noise_matrix[2][0] = 5e-5
+        noise_matrix = noise_matrix + np.random.normal(0, 1e-5, noise_matrix.shape)
+        # noise_matrix[2][0] = 5e-5
 
         print("NOISE", noise_matrix)
         
