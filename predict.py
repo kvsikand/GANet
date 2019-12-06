@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 import cv2
@@ -23,18 +24,18 @@ import numpy as np
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch GANet Example')
-parser.add_argument('--crop_height', type=int, required=True, help="crop height")
-parser.add_argument('--crop_width', type=int, required=True, help="crop width")
-parser.add_argument('--max_disp', type=int, default=192, help="max disp")
-parser.add_argument('--resume', type=str, default='', help="resume from saved model")
-parser.add_argument('--cuda', type=bool, default=True, help='use cuda?')
+parser.add_argument('--crop_height', type=int, help="crop height", default=240)
+parser.add_argument('--crop_width', type=int, help="crop width", default=624)
+parser.add_argument('--max_disp', type=int, help="max disp", default=192)
+parser.add_argument('--resume', type=str, help="resume from saved model", default='./trained_models/kitti2015_final.pth')
+parser.add_argument('--cuda', type=bool, help='use cuda?', default=True)
 parser.add_argument('--kitti', type=int, default=0, help='kitti dataset? Default=False')
-parser.add_argument('--kitti2015', type=int, default=0, help='kitti 2015? Default=False')
-parser.add_argument('--data_path', type=str, required=True, help="data root")
-parser.add_argument('--test_list', type=str, required=True, help="training list")
+parser.add_argument('--kitti2015', type=int, help='kitti 2015? Default=False', default=1)
+parser.add_argument('--data_path', type=str, help="data root", default='../data_scene_flow/testing/')
+parser.add_argument('--test_list', type=str, help="test list", default='lists/single_test.list')
 parser.add_argument('--save_path', type=str, help="location to save result")
 parser.add_argument('--model', type=str, default='GANet_deep', help="model to train")
-parser.add_argument('--noise', type=str, default='none', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
+parser.add_argument('--noise', type=str, default='ref', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
 
 opt = parser.parse_args()
 
@@ -73,7 +74,21 @@ if opt.resume:
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
-def add_noise(img, height, width):
+def add_noise(img, height, width, rmeans, rstdevs):
+    def save_image(noisy, name="test_noise.png"):
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+        r = r*rstdevs[0] + rmeans[0]
+        g = g*rstdevs[1] + rmeans[1]
+        b = b*rstdevs[2] + rmeans[2]
+        shown = np.zeros(noisy.shape)
+        shown[:, :, 0] =  r
+        shown[:, :, 1] =  g
+        shown[:, :, 2] =  b
+
+        skimage.io.imsave(name, (shown).astype('uint8'))
+
     if opt.noise == 'gaussian':
         #gaussian noise
         r = img[:, :, 0]
@@ -84,13 +99,28 @@ def add_noise(img, height, width):
         b = b + np.reshape(np.random.normal(0, 25, height * width), (height, width))
     elif opt.noise == 'homography':
         print("Adding Homography Noise...")
-        # TODO: Figure out if this is correct way of applying homography
-        # Should it be 3x3 or heightxwidth?
-        # If 3x3, is there a cleaner way to apply to each pixel?
-
         noise_matrix = np.eye(3, 3)
-        noise_matrix = noise_matrix + np.random.normal(0, 0.01, noise_matrix.shape)
-        NOISE_AMT = 4
+        noise_matrix[2][0] = 5e-5
+
+        print("NOISE", noise_matrix)
+        
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+
+        save_image(noisy)
+    elif opt.noise == 'cvperspective':
         corner_noise = np.random.normal(0, NOISE_AMT * .5, (4, 2)).astype(np.float32)
         corner_noise = np.clip(corner_noise, -NOISE_AMT, NOISE_AMT)
         # corner_noise = np.array([[30, 60], [-50, 50], [-100, -50], [50, -50]], np.float32)
@@ -98,16 +128,7 @@ def add_noise(img, height, width):
             np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32),
             np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32) + corner_noise,
         )
-        persp_matrix = np.around(persp_matrix, 3)   
-        # noise_matrix[2][:2] = [0, 0]
-        # noise_matrix[0][2] = 0
-        # noise_matrix[1][2] = 0
-
-        # noise_matrix[1:,1:] = [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
-        # noise_matrix = np.asarray([[0, 0, 0], [0, 1, 0], [0, 0, 1]]) 
-        # noise_matrix[0, 2] = translation[0]
-        # noise_matrix[1, 2] = translation[1]
-        print("NOISE", noise_matrix)
+        persp_matrix = np.around(persp_matrix, 3)
         print("PERSP", persp_matrix)
 
         noisy = np.zeros(img.shape)
@@ -124,8 +145,7 @@ def add_noise(img, height, width):
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
 
-        skimage.io.imsave("test_rotate.png", (noisy).astype('uint8'))
-
+        save_image(noisy)
     elif opt.noise == 'shift':
         SHIFT = 30
         r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)
@@ -134,10 +154,14 @@ def add_noise(img, height, width):
     elif opt.noise == 'rt':
         # TODO
         print("still need to implement")
+    else: # no noise
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
 
     return r, g, b
 
-def test_transform(temp_data, crop_height, crop_width):
+def test_transform(temp_data, crop_height, crop_width, rmeans, rstdevs):
     _, h, w=np.shape(temp_data)
 
     if h <= crop_height and w <= crop_width:
@@ -148,10 +172,16 @@ def test_transform(temp_data, crop_height, crop_width):
         start_x = int((w - crop_width) / 2)
         start_y = int((h - crop_height) / 2)
         temp_data = temp_data[:, start_y: start_y + crop_height, start_x: start_x + crop_width]
-    left = np.ones([1, 3,crop_height,crop_width],'float32')
+    
+    left = np.ones([1, 3, crop_height, crop_width],'float32')
     left[0, :, :, :] = temp_data[0: 3, :, :]
     right = np.ones([1, 3, crop_height, crop_width], 'float32')
-    right[0, :, :, :] = temp_data[3: 6, :, :]
+
+    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width, rmeans, rstdevs)
+
+    right[0, 0, :, :] = r
+    right[0, 1, :, :] = g
+    right[0, 2, :, :] = b
     return torch.from_numpy(left).float(), torch.from_numpy(right).float(), h, w
 
 def load_data(leftname, rightname):
@@ -169,18 +199,20 @@ def load_data(leftname, rightname):
     temp_data[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-    
-    r, g, b = add_noise(right, height, width)
-    #r,g,b,_ = right.split()
+    r = right[:, :, 0]
+    g = right[:, :, 1]
+    b = right[:, :, 2]	
+    means = (np.mean(r[:]), np.mean(g[:]), np.mean(b[:]))
+    stdevs = (np.std(r[:]), np.std(g[:]), np.std(b[:]))
     temp_data[3, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[4, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[5, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-    return temp_data
+    return temp_data, means, stdevs
 
 def test(leftname, rightname, savename):
   #  count=0
-    
-    input1, input2, height, width = test_transform(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
+    data, means, stdevs = load_data(leftname, rightname)
+    input1, input2, height, width = test_transform(data, opt.crop_height, opt.crop_width, means, stdevs)
 
     
     input1 = Variable(input1, requires_grad = False)
@@ -205,7 +237,8 @@ def test(leftname, rightname, savename):
 
     temp = (temp - min_depth) / (max_depth - min_depth)
 
-    skimage.io.imsave(savename, (temp * 256).astype('uint8'))
+    plt.imsave(savename, temp)
+    # skimage.io.imsave(savename, (temp * 256).astype('uint8'))
 
    
 if __name__ == "__main__":
