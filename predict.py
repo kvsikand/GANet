@@ -30,8 +30,8 @@ parser.add_argument('--max_disp', type=int, help="max disp", default=192)
 parser.add_argument('--resume', type=str, help="resume from saved model", default='./trained_models/kitti2015_final.pth')
 parser.add_argument('--cuda', type=bool, help='use cuda?', default=True)
 parser.add_argument('--kitti', type=int, default=0, help='kitti dataset? Default=False')
-parser.add_argument('--kitti2015', type=int, help='kitti 2015? Default=False', default=1)
-parser.add_argument('--data_path', type=str, help="data root", default='../data_scene_flow/testing/')
+parser.add_argument('--kitti2015', type=int, help='kitti 2015? Default=True', default=1)
+parser.add_argument('--data_path', type=str, help="data root", default='../data_scene_flow/training/')
 parser.add_argument('--test_list', type=str, help="test list", default='lists/single_test.list')
 parser.add_argument('--save_path', type=str, help="location to save result")
 parser.add_argument('--model', type=str, default='GANet_deep', help="model to train")
@@ -74,8 +74,10 @@ if opt.resume:
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
-def add_noise(img, height, width, rmeans, rstdevs):
+def add_noise(img, height, width, rmeans=None, rstdevs=None):
     def save_image(noisy, name="test_noise.png"):
+        if not rmeans or not rstdevs:
+            return
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
@@ -94,9 +96,9 @@ def add_noise(img, height, width, rmeans, rstdevs):
         r = img[:, :, 0]
         g = img[:, :, 1]
         b = img[:, :, 2]
-        r = r + np.reshape(np.random.normal(0, 25, height * width), (height, width))
-        g = g + np.reshape(np.random.normal(0, 25, height * width), (height, width))
-        b = b + np.reshape(np.random.normal(0, 25, height * width), (height, width))
+        r = r + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
+        g = g + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
+        b = b + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
     elif opt.noise == 'homography':
         print("Adding Homography Noise...")
         noise_matrix = np.eye(3, 3)
@@ -119,7 +121,6 @@ def add_noise(img, height, width, rmeans, rstdevs):
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
-
         save_image(noisy)
     elif opt.noise == 'cvperspective':
         corner_noise = np.random.normal(0, NOISE_AMT * .5, (4, 2)).astype(np.float32)

@@ -23,21 +23,21 @@ from models.GANet_deep import GANet
 import numpy as np
 
 parser = argparse.ArgumentParser(description='PyTorch GANet Example')
-parser.add_argument('--crop_height', type=int, required=True, help="crop height")
-parser.add_argument('--crop_width', type=int, required=True, help="crop width")
-parser.add_argument('--max_disp', type=int, default=192, help="max disp")
+parser.add_argument('--crop_height', type=int, help="crop height", default=384)
+parser.add_argument('--crop_width', type=int, help="crop width", default=1248)
+parser.add_argument('--max_disp', type=int, help="max disp", default=192)
 parser.add_argument('--resume', type=str, default='', help="resume from saved model")
 parser.add_argument('--cuda', type=bool, default=True, help='use cuda?')
 parser.add_argument('--kitti', type=int, default=0, help='kitti dataset? Default=False')
-parser.add_argument('--kitti2015', type=int, default=0, help='kitti 2015? Default=False')
-parser.add_argument('--data_path', type=str, required=True, help="data root")
-parser.add_argument('--test_list', type=str, required=True, help="training list")
+parser.add_argument('--kitti2015', type=int, help='kitti 2015? Default=True', default=1)
+parser.add_argument('--data_path', type=str, help="data root", default='../data_scene_flow/training/')
+parser.add_argument('--test_list', type=str, help="test list", default='lists/single_test.list')
 parser.add_argument('--save_path', type=str, default='./result/', help="location to save result")
 parser.add_argument('--threshold', type=float, default=3.0, help="threshold of error rates")
 parser.add_argument('--multi_gpu', type=int, default=0, help="multi_gpu choice")
+parser.add_argument('--noise', type=str, default='ref', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
 
 opt = parser.parse_args()
-
 
 print(opt)
 
@@ -101,6 +101,96 @@ def readPFM(file):
         img = np.flipud(img)
     return img, height, width
 
+
+def add_noise(img, height, width, rmeans=None, rstdevs=None):
+    def save_image(noisy, name="test_noise.png"):
+        if not rmeans or not rstdevs:
+            return
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+        r = r*rstdevs[0] + rmeans[0]
+        g = g*rstdevs[1] + rmeans[1]
+        b = b*rstdevs[2] + rmeans[2]
+        shown = np.zeros(noisy.shape)
+        shown[:, :, 0] =  r
+        shown[:, :, 1] =  g
+        shown[:, :, 2] =  b
+
+        skimage.io.imsave(name, (shown).astype('uint8'))
+
+    if opt.noise == 'gaussian':
+        #gaussian noise
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
+        r = r + np.reshape(np.random.normal(0, 1e-4, height * width), (height, width))
+        g = g + np.reshape(np.random.normal(0, 1e-4, height * width), (height, width))
+        b = b + np.reshape(np.random.normal(0, 1e-4, height * width), (height, width))
+    elif opt.noise == 'homography':
+        print("Adding Homography Noise...")
+        noise_matrix = np.eye(3, 3)
+        noise_matrix = noise_matrix + np.random.normal(0, 1e-5, noise_matrix.shape)
+        # noise_matrix[2][0] = 5e-5
+
+        print("NOISE", noise_matrix)
+        
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+        save_image(noisy)
+    elif opt.noise == 'cvperspective':
+        corner_noise = np.random.normal(0, NOISE_AMT * .5, (4, 2)).astype(np.float32)
+        corner_noise = np.clip(corner_noise, -NOISE_AMT, NOISE_AMT)
+        # corner_noise = np.array([[30, 60], [-50, 50], [-100, -50], [50, -50]], np.float32)
+        persp_matrix = cv2.getPerspectiveTransform(
+            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32),
+            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32) + corner_noise,
+        )
+        persp_matrix = np.around(persp_matrix, 3)
+        print("PERSP", persp_matrix)
+
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = persp_matrix.dot(np.array([i, j, 1]))
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+
+        save_image(noisy)
+    elif opt.noise == 'shift':
+        SHIFT = 30
+        r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)
+        g = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 1]], axis=0)
+        b = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 2]], axis=0)
+    elif opt.noise == 'rt':
+        # TODO
+        print("still need to implement")
+    else: # no noise
+        r = img[:, :, 0]
+        g = img[:, :, 1]
+        b = img[:, :, 2]
+
+    return r, g, b
+
 def test_transform(temp_data, crop_height, crop_width):
     _, h, w=np.shape(temp_data)
 
@@ -115,7 +205,10 @@ def test_transform(temp_data, crop_height, crop_width):
     left = np.ones([1, 3,crop_height,crop_width],'float32')
     left[0, :, :, :] = temp_data[0: 3, :, :]
     right = np.ones([1, 3, crop_height, crop_width], 'float32')
-    right[0, :, :, :] = temp_data[3: 6, :, :]
+    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width)
+    right[0, 0, :, :] = r
+    right[0, 1, :, :] = g
+    right[0, 2, :, :] = b
     return torch.from_numpy(left).float(), torch.from_numpy(right).float(), h, w
 
 def load_data(leftname, rightname):
@@ -187,14 +280,13 @@ if __name__ == "__main__":
             savename = opt.save_path + current_file[0: len(current_file) - 1]
             disp = Image.open(dispname)
             disp = np.asarray(disp) / 256.0
-
         else:
             leftname = opt.data_path + 'frames_finalpass/' + current_file[0: len(current_file) - 1]
             rightname = opt.data_path + 'frames_finalpass/' + current_file[0: len(current_file) - 14] + 'right/' + current_file[len(current_file) - 9:len(current_file) - 1]
             dispname = opt.data_path + 'disparity/' + current_file[0: len(current_file) - 4] + 'pfm'
             savename = opt.save_path + str(index) + '.png'
             disp, height, width = readPFM(dispname)
-       
+        
         prediction = test(leftname, rightname, savename)
         mask = np.logical_and(disp >= 0.001, disp <= opt.max_disp)
 

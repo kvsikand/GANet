@@ -1,0 +1,11 @@
+No Noise
+===> Total 21 Frames ==> AVG EPE Error: 0.3426, AVG Error Rate: 0.0076
+
+gaussian noise in each channel with stdev of 1e-2:
+===> Total 21 Frames ==> AVG EPE Error: 0.3437, AVG Error Rate: 0.0077
+
+homography noise: 0 mean, 1e-6 stdev on full homography matrix
+===> Total 21 Frames ==> AVG EPE Error: 0.8735, AVG Error Rate: 0.0897
+
+perspective noise: I + 1e-8 on single cell of homography matrix
+===> Total 21 Frames ==> AVG EPE Error: 1.4252, AVG Error Rate: 0.1470
