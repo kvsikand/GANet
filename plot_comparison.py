@@ -20,7 +20,7 @@ print(fl2)
 f, axarr = plt.subplots(sz, 3, figsize=(15, 5))
 
 for f2 in fl2: 
-    if '.png' in f2:
+    if '.png' in f2 and '_input' not in f2:
         img1 = mpimg.imread(os.path.join(compdir, f2[:-4] + '_input.png'))
         img2 = mpimg.imread(os.path.join(refdir, f2))
         img3 = mpimg.imread(os.path.join(compdir, f2))
