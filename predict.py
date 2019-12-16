@@ -217,7 +217,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
 
     return r, g, b
 
-def test_transform(temp_data, crop_height, crop_width, rmeans, rstdevs):
+def test_transform(temp_data, crop_height, crop_width, rmeans, rstdevs, savename):
     _, h, w=np.shape(temp_data)
 
     if h <= crop_height and w <= crop_width:
@@ -233,7 +233,7 @@ def test_transform(temp_data, crop_height, crop_width, rmeans, rstdevs):
     left[0, :, :, :] = temp_data[0: 3, :, :]
     right = np.ones([1, 3, crop_height, crop_width], 'float32')
 
-    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width, rmeans, rstdevs, 'noise_' + opt.noise + '.png')
+    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width, rmeans, rstdevs, savename + '_input.png')
 
     right[0, 0, :, :] = r
     right[0, 1, :, :] = g
@@ -268,7 +268,7 @@ def load_data(leftname, rightname):
 def test(leftname, rightname, savename):
   #  count=0
     data, means, stdevs = load_data(leftname, rightname)
-    input1, input2, height, width = test_transform(data, opt.crop_height, opt.crop_width, means, stdevs)
+    input1, input2, height, width = test_transform(data, opt.crop_height, opt.crop_width, means, stdevs, savename)
 
     
     input1 = Variable(input1, requires_grad = False)
