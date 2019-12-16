@@ -14,7 +14,7 @@ compdir = opt.comp_dir
 fl1 = sorted(os.listdir(refdir))
 fl2 = sorted(os.listdir(compdir))
 
-fl2 = list(filter(lambda x: '.png' in x and '_input' not in x. fl2))
+fl2 = list(filter(lambda x: '.png' in x and '_input' not in x, fl2))
 i = 0
 sz = len(fl2)
 print(fl2)
