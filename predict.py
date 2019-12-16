@@ -233,7 +233,7 @@ def test_transform(temp_data, crop_height, crop_width, rmeans, rstdevs):
     left[0, :, :, :] = temp_data[0: 3, :, :]
     right = np.ones([1, 3, crop_height, crop_width], 'float32')
 
-    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width, rmeans, rstdevs)
+    r, g, b = add_noise(temp_data[3: 6, :, :].transpose(1, 2, 0), crop_height, crop_width, rmeans, rstdevs, 'noise_' + opt.noise + '.png')
 
     right[0, 0, :, :] = r
     right[0, 1, :, :] = g
