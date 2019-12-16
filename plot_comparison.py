@@ -6,7 +6,6 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--comp_dir', type=str, default='result_ref', help="directory to compare")
-parser.add_argument('--noise_img', type=str, default='noise.png', help="source noisy image")
 opt = parser.parse_args()
 
 refdir = 'result_ref'
@@ -21,7 +20,7 @@ print(fl2)
 f, axarr = plt.subplots(sz, 3, figsize=(15, 5))
 
 for f2 in fl2: 
-    img1 = mpimg.imread(opt.noise_img)
+    img1 = mpimg.imread(os.path.join(compdir, f2[:-4] + '_input.png'))
     img2 = mpimg.imread(os.path.join(refdir, f2))
     img3 = mpimg.imread(os.path.join(compdir, f2))
 
