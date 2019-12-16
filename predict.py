@@ -17,7 +17,6 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-import cv2
 #from models.GANet_deep import GANet
 from dataloader.data import get_test_set
 import numpy as np
@@ -36,7 +35,7 @@ parser.add_argument('--test_list', type=str, help="test list", default='lists/si
 parser.add_argument('--save_path', type=str, help="location to save result")
 parser.add_argument('--model', type=str, default='GANet_deep', help="model to train")
 parser.add_argument('--noise', type=str, default='ref', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
-parser.add_argument('--noise_amt', type=int, default=1e-6, help='amount of noise to add')
+parser.add_argument('--noise_amt', type=float, default=1e-6, help='amount of noise to add')
 opt = parser.parse_args()
 
 

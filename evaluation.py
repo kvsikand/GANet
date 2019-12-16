@@ -36,7 +36,7 @@ parser.add_argument('--save_path', type=str, default='./result/', help="location
 parser.add_argument('--threshold', type=float, default=3.0, help="threshold of error rates")
 parser.add_argument('--multi_gpu', type=int, default=0, help="multi_gpu choice")
 parser.add_argument('--noise', type=str, default='ref', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
-parser.add_argument('--noise_amt', type=int, default=1e-6, help='amount of noise to add')
+parser.add_argument('--noise_amt', type=float, default=1e-6, help='amount of noise to add')
 
 opt = parser.parse_args()
 
