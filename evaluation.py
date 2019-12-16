@@ -36,6 +36,7 @@ parser.add_argument('--save_path', type=str, default='./result/', help="location
 parser.add_argument('--threshold', type=float, default=3.0, help="threshold of error rates")
 parser.add_argument('--multi_gpu', type=int, default=0, help="multi_gpu choice")
 parser.add_argument('--noise', type=str, default='ref', help="type of noise to add. One of ['none', 'gaussian', 'homography', 'rt']")
+parser.add_argument('--noise_amt', type=int, default=1e-6, help='amount of noise to add')
 
 opt = parser.parse_args()
 
@@ -125,13 +126,9 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
         g = img[:, :, 1]
         b = img[:, :, 2]
 
-        # rand_noise = np.random.normal(0, 1e-2, img.shape[:2])
-        r = np.random.normal(r, 1e-2)
-        g = np.random.normal(g, 1e-2)
-        b = np.random.normal(b, 1e-2)
-        # r = r + rand_noise
-        # g = g + rand_noise
-        # b = b + rand_noise
+        r = np.random.normal(r, opt.noise_amt)
+        g = np.random.normal(g, opt.noise_amt)
+        b = np.random.normal(b, opt.noise_amt)
 
         noisy = np.zeros(img.shape)
         noisy[:, :, 0] = r
@@ -143,7 +140,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
     elif opt.noise == 'homography':
         print("Adding Homography Noise...")
         noise_matrix = np.eye(3, 3)
-        noise_matrix = noise_matrix + np.random.normal(0, 1e-20, noise_matrix.shape)
+        noise_matrix = noise_matrix + np.random.normal(0, opt.noise_amt, noise_matrix.shape)
 
         print("NOISE", noise_matrix)
         
@@ -166,7 +163,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
     elif opt.noise == 'perspective':
         print("Adding Perspective Noise...")
         noise_matrix = np.eye(3, 3)
-        noise_matrix[2][0] = 1e-7
+        noise_matrix[2][0] = opt.noise_amt
 
         print("NOISE", noise_matrix)
         
@@ -194,9 +191,8 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
     elif opt.noise == 'trans':
         print("Adding Translation Noise...")
         noise_matrix = np.eye(3, 3)
-        # noise_matrix = noise_matrix + np.random.normal(0, 1e-5, noise_matrix.shape)
-        noise_matrix[0][2] = np.random.normal(0, 1e-5)
-        noise_matrix[1][2] = np.random.normal(0, 1e-5)
+        noise_matrix[0][2] = np.random.normal(0, opt.noise_amt)
+        noise_matrix[1][2] = np.random.normal(0, opt.noise_amt)
 
         print("NOISE", noise_matrix)
         
@@ -218,7 +214,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
     elif opt.noise == 'rot':
         print("Adding Rotation Noise...")
         noise_matrix = np.eye(3, 3)
-        rot_theta = np.random.normal(0, 1e-5)
+        rot_theta = np.random.normal(0, opt.noise_amt)
         rot_cos = np.cos(rot_theta)
         rot_sin = np.sin(rot_theta)
         noise_matrix[0][0] = rot_cos
