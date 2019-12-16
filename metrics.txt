@@ -1,11 +1,46 @@
-No Noise
+no noise:
+Total 21 Frames ==> AVG EPE Error: 0.3426, AVG Error Rate: 0.0076
+
+gaussian noise normal(1e-2):
+===> Total 21 Frames ==> AVG EPE Error: 0.3436, AVG Error Rate: 0.0076
+
+trans normal(1e-5):
+Total 21 Frames ==> AVG EPE Error: 0.6961, AVG Error Rate: 0.0224
+
+rot, theta=normal(1e-5):
+Total 21 Frames ==> AVG EPE Error: 0.9151, AVG Error Rate: 0.0314
+
+prespective 1e-7:
+Total 21 Frames ==> AVG EPE Error: 1.4252, AVG Error Rate: 0.1470
+
+HOMOGRAPHY
+homography normal(1e-4):
+===> Total 21 Frames ==> AVG EPE Error: 28.6429, AVG Error Rate: 0.8931
+
+homography normal(1e-5):
+===> Total 21 Frames ==> AVG EPE Error: 3.5850, AVG Error Rate: 0.5330
+
+homography normal(1e-6):
+Total 21 Frames ==> AVG EPE Error: 1.0511, AVG Error Rate: 0.1074
+
+homography normal(5e-7):
+Total 21 Frames ==> AVG EPE Error: 0.9525, AVG Error Rate: 0.0840
+
+homography normal(1e-7):
+Total 21 Frames ==> AVG EPE Error: 0.9110, AVG Error Rate: 0.0731
+
+homography normal(1e-8):
+Total 21 Frames ==> AVG EPE Error: 0.8925, AVG Error Rate: 0.0759
+
+homography normal(1e-9):
+Total 21 Frames ==> AVG EPE Error: 0.7840, AVG Error Rate: 0.0666
+
+homography normal(1e-10):
+Total 21 Frames ==> AVG EPE Error: 0.7727, AVG Error Rate: 0.0646
+
+homography normal(1e-20):
 ===> Total 21 Frames ==> AVG EPE Error: 0.3426, AVG Error Rate: 0.0076
 
-gaussian noise in each channel with stdev of 1e-2:
-===> Total 21 Frames ==> AVG EPE Error: 0.3437, AVG Error Rate: 0.0077
 
-homography noise: 0 mean, 1e-6 stdev on full homography matrix
-===> Total 21 Frames ==> AVG EPE Error: 0.8735, AVG Error Rate: 0.0897
-
-perspective noise: I + 1e-8 on single cell of homography matrix
-===> Total 21 Frames ==> AVG EPE Error: 1.4252, AVG Error Rate: 0.1470
+TODO:
+Salt and Paper Noise, maybe?

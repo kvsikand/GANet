@@ -74,10 +74,10 @@ if opt.resume:
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
-def add_noise(img, height, width, rmeans=None, rstdevs=None):
-    def save_image(noisy, name="test_noise.png"):
+def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
+    def save_image(noisy):
         if not rmeans or not rstdevs:
-            return
+          return None
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
@@ -89,21 +89,87 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None):
         shown[:, :, 1] =  g
         shown[:, :, 2] =  b
 
-        skimage.io.imsave(name, (shown).astype('uint8'))
+        skimage.io.imsave(mod_savename, (shown).astype('uint8'))
 
     if opt.noise == 'gaussian':
+        print("Adding Gaussian Noise...")
         #gaussian noise
         r = img[:, :, 0]
         g = img[:, :, 1]
         b = img[:, :, 2]
-        r = r + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
-        g = g + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
-        b = b + np.reshape(np.random.normal(0, 1e-3, height * width), (height, width))
+
+        # rand_noise = np.random.normal(0, 1e-2, img.shape[:2])
+        r = np.random.normal(r, 1e-2)
+        g = np.random.normal(g, 1e-2)
+        b = np.random.normal(b, 1e-2)
+        # r = r + rand_noise
+        # g = g + rand_noise
+        # b = b + rand_noise
+
+        noisy = np.zeros(img.shape)
+        noisy[:, :, 0] = r
+        noisy[:, :, 1] = g
+        noisy[:, :, 2] = b
+
+        save_image(noisy)
+
     elif opt.noise == 'homography':
         print("Adding Homography Noise...")
         noise_matrix = np.eye(3, 3)
-        noise_matrix = noise_matrix + np.random.normal(0, 1e-5, noise_matrix.shape)
-        # noise_matrix[2][0] = 5e-5
+        noise_matrix = noise_matrix + np.random.normal(0, 1e-20, noise_matrix.shape)
+
+        print("NOISE", noise_matrix)
+        
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+
+        save_image(noisy)
+    elif opt.noise == 'perspective':
+        print("Adding Perspective Noise...")
+        noise_matrix = np.eye(3, 3)
+        noise_matrix[2][0] = 1e-7
+
+        print("NOISE", noise_matrix)
+        
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+
+        r = noisy[:, :, 0]
+        g = noisy[:, :, 1]
+        b = noisy[:, :, 2]
+
+        save_image(noisy)
+    elif opt.noise == 'shift':
+        SHIFT = 30
+        r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)
+        g = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 1]], axis=0)
+        b = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 2]], axis=0)
+    elif opt.noise == 'trans':
+        print("Adding Translation Noise...")
+        noise_matrix = np.eye(3, 3)
+        # noise_matrix = noise_matrix + np.random.normal(0, 1e-5, noise_matrix.shape)
+        noise_matrix[0][2] = np.random.normal(0, 1e-5)
+        noise_matrix[1][2] = np.random.normal(0, 1e-5)
 
         print("NOISE", noise_matrix)
         
@@ -122,21 +188,24 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None):
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
         save_image(noisy)
-    elif opt.noise == 'cvperspective':
-        corner_noise = np.random.normal(0, NOISE_AMT * .5, (4, 2)).astype(np.float32)
-        corner_noise = np.clip(corner_noise, -NOISE_AMT, NOISE_AMT)
-        # corner_noise = np.array([[30, 60], [-50, 50], [-100, -50], [50, -50]], np.float32)
-        persp_matrix = cv2.getPerspectiveTransform(
-            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32),
-            np.array([[0, 0], [0, width - 1], [height - 1, width - 1], [height - 1, 0]], np.float32) + corner_noise,
-        )
-        persp_matrix = np.around(persp_matrix, 3)
-        print("PERSP", persp_matrix)
+    elif opt.noise == 'rot':
+        print("Adding Rotation Noise...")
+        noise_matrix = np.eye(3, 3)
+        rot_theta = np.random.normal(0, 1e-5)
+        rot_cos = np.cos(rot_theta)
+        rot_sin = np.sin(rot_theta)
+        noise_matrix[0][0] = rot_cos
+        noise_matrix[1][1] = rot_cos
+        noise_matrix[0][1] = rot_sin
+        noise_matrix[1][0] = -rot_sin
 
+        print("NOISE", noise_matrix)
+        
         noisy = np.zeros(img.shape)
         for i in range(img.shape[0]):
             for j in range(img.shape[1]):
-                new_coord = persp_matrix.dot(np.array([i, j, 1]))
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
                 if new_coord[0] < 0 or new_coord[1] < 0:
                     continue
                 if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
@@ -146,16 +215,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None):
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
         b = noisy[:, :, 2]
-
         save_image(noisy)
-    elif opt.noise == 'shift':
-        SHIFT = 30
-        r = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 0]], axis=0)
-        g = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 1]], axis=0)
-        b = np.concatenate([np.zeros((SHIFT,img.shape[1])), img[SHIFT:, :, 2]], axis=0)
-    elif opt.noise == 'rt':
-        # TODO
-        print("still need to implement")
     else: # no noise
         r = img[:, :, 0]
         g = img[:, :, 1]
