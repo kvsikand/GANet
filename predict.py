@@ -74,6 +74,19 @@ if opt.resume:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
 def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
+    def apply_noise(image, noise):
+        noisy = np.zeros(img.shape)
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                new_coord = noise_matrix.dot(np.array([i, j, 1]))
+                new_coord = new_coord / new_coord[2]
+                if new_coord[0] < 0 or new_coord[1] < 0:
+                    continue
+                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
+                    continue
+                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+        return noisy
+
     def save_image(noisy):
         if not rmeans or not rstdevs:
           return None
@@ -115,16 +128,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
 
         print("NOISE", noise_matrix)
         
-        noisy = np.zeros(img.shape)
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                new_coord = noise_matrix.dot(np.array([i, j, 1]))
-                new_coord = new_coord / new_coord[2]
-                if new_coord[0] < 0 or new_coord[1] < 0:
-                    continue
-                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
-                    continue
-                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+        noisy = apply_noise(noise_matrix, img)
 
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
@@ -138,16 +142,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
 
         print("NOISE", noise_matrix)
         
-        noisy = np.zeros(img.shape)
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                new_coord = noise_matrix.dot(np.array([i, j, 1]))
-                new_coord = new_coord / new_coord[2]
-                if new_coord[0] < 0 or new_coord[1] < 0:
-                    continue
-                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
-                    continue
-                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+        noisy = apply_noise(noise_matrix, img)
 
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
@@ -167,16 +162,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
 
         print("NOISE", noise_matrix)
         
-        noisy = np.zeros(img.shape)
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                new_coord = noise_matrix.dot(np.array([i, j, 1]))
-                new_coord = new_coord / new_coord[2]
-                if new_coord[0] < 0 or new_coord[1] < 0:
-                    continue
-                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
-                    continue
-                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+        noisy = apply_noise(noise_matrix, img)
 
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
@@ -195,16 +181,7 @@ def add_noise(img, height, width, rmeans=None, rstdevs=None, mod_savename=None):
 
         print("NOISE", noise_matrix)
         
-        noisy = np.zeros(img.shape)
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                new_coord = noise_matrix.dot(np.array([i, j, 1]))
-                new_coord = new_coord / new_coord[2]
-                if new_coord[0] < 0 or new_coord[1] < 0:
-                    continue
-                if new_coord[0] >= img.shape[0] or new_coord[1] >= img.shape[1]:
-                    continue
-                noisy[int(new_coord[0])][int(new_coord[1])] = img[i][j]
+        noisy = apply_noise(noise_matrix, img)
 
         r = noisy[:, :, 0]
         g = noisy[:, :, 1]
